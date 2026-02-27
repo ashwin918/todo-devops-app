@@ -1,0 +1,69 @@
+pipeline {
+    agent any
+
+    triggers {
+        githubPush()
+    }
+
+    environment {
+        BACKEND_IMAGE  = "ashwinemcbalaji/todo-backend"
+        FRONTEND_IMAGE = "ashwinemcbalaji/todo-frontend"
+        DOCKERHUB_CREDENTIALS = "dockerhub-cred1"
+        SONARQUBE_ENV = "SonarQube"
+    }
+
+    stages {
+
+        stage('1️⃣ Code Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('2️⃣ SonarQube Analysis') {
+            steps {
+                script {
+                    def scannerHome = tool 'SonarScanner'
+                    withSonarQubeEnv("${SONARQUBE_ENV}") {
+                        bat """
+                        ${scannerHome}\\bin\\sonar-scanner.bat ^
+                        -Dsonar.projectKey=todo-devops-app ^
+                        -Dsonar.projectName=TodoDevOpsApp ^
+                        -Dsonar.sources=. ^
+                        -Dsonar.host.url=http://localhost:9000
+                        """
+                    }
+                }
+            }
+        }
+
+        stage('3️⃣ Build Docker Images') {
+            steps {
+                script {
+                    docker.build("${BACKEND_IMAGE}:latest", "./backend")
+                    docker.build("${FRONTEND_IMAGE}:latest", "./frontend")
+                }
+            }
+        }
+
+        stage('4️⃣ Push to DockerHub') {
+            steps {
+                script {
+                    docker.withRegistry('', DOCKERHUB_CREDENTIALS) {
+                        docker.image("${BACKEND_IMAGE}:latest").push()
+                        docker.image("${FRONTEND_IMAGE}:latest").push()
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "✅ Pipeline Completed Successfully!"
+        }
+        failure {
+            echo "❌ Pipeline Failed!"
+        }
+    }
+}
