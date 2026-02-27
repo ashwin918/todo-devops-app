@@ -1,5 +1,4 @@
-const API = "http://localhost:5000/api";
-
+const API = "http://3.107.99.129:5000/api";
 function getValue(id) {
   return document.getElementById(id).value;
 }
